@@ -4,11 +4,11 @@ import argparse, json
 from pathlib import Path
 import numpy as np
 import pandas as pd
+from sklearn.metrics import roc_auc_score, average_precision_score
 from hivlat.config import Config
 from hivlat.logging import get_logger
-from hivlat.models.baseline import load as load_model, eval_multiclass
+from hivlat.models.baseline import load as load_model, eval_multiclass, predict_proba
 from hivlat.models.metrics import expected_calibration_error_multiclass as ece_mc
-from hivlat.data.labeling import apply_labels
 
 def evaluate_set(bundle, X: pd.DataFrame, y: pd.Series, name: str, outdir: Path):
     metrics, proba, y_true = eval_multiclass(bundle, X, y)
@@ -30,23 +30,37 @@ def main(cfg_path: str, model_path: str):
 
     bundle = load_model(model_path)
 
-    # Validation (held-out from latency model)
+    # Validation (multiclass)
     X_val = pd.read_parquet(processed / 'X_val.parquet')
     y_val = pd.read_csv(processed / 'y_val.csv', index_col=0)['label']
     m_val = evaluate_set(bundle, X_val, y_val, 'val', outdir)
 
-    # Donor external set (if available)
+    # Donor (binary latent vs productive)
     donor_metrics = {}
     f_don = interim / 'GSE111727_donors.parquet'
     f_lab = interim / 'GSE111727_donors_labels.csv'
     if f_don.exists() and f_lab.exists():
         X_don = pd.read_parquet(f_don)
         y_don = pd.read_csv(f_lab, index_col=0)['label']
-        # Keep only donor_untreated / donor_tcr; map to latent/productive for a sanity check
         mask = y_don.isin(['donor_untreated','donor_tcr'])
         X_don = X_don.loc[:, mask.index[mask]]
-        y_map = y_don[mask].map({'donor_untreated':'latent', 'donor_tcr':'productive'})
-        donor_metrics = evaluate_set(bundle, X_don, y_map, 'donor', outdir)
+        y_bin_labels = y_don[mask].map({'donor_untreated':'latent', 'donor_tcr':'productive'})
+        proba_full = predict_proba(bundle, X_don)
+        classes = bundle['classes']
+        if 'productive' in classes and 'latent' in classes:
+            p_prod = proba_full[:, classes.index('productive')]
+            y_bin = (y_bin_labels.values == 'productive').astype(int)
+            if len(set(y_bin)) == 2:
+                donor_metrics = {
+                    'auroc_binary': float(roc_auc_score(y_bin, p_prod)),
+                    'auprc_binary': float(average_precision_score(y_bin, p_prod))
+                }
+                proba2 = np.vstack([1.0 - p_prod, p_prod]).T
+                donor_metrics['ece_maxprob'] = float(ece_mc(proba2, y_bin, n_bins=15))
+            else:
+                donor_metrics = {'note': 'Only one donor class present; AUROC/AUPRC undefined.'}
+        else:
+            donor_metrics = {'note': 'Model classes missing latent/productive.'}
 
     report = {'val': m_val, 'donor': donor_metrics}
     with open(outdir / 'report.json', 'w') as f:

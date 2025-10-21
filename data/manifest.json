@@ -1,17 +1,17 @@
 {
   "GSE111727_sc_lat_model_raw_counts_genes.txt.gz": {
     "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE111nnn/GSE111727/suppl/GSE111727_sc_lat_model_raw_counts_genes.txt.gz",
-    "sha256": "",
-    "bytes": 0
+    "sha256": "1166dc05d25bad28869ebb54c253d9f6799461ef6f0d44d46ed1692ed69594cd",
+    "bytes": 1982578
   },
   "GSE111727_sc_donors_raw_counts_genes.txt.gz": {
     "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE111nnn/GSE111727/suppl/GSE111727_sc_donors_raw_counts_genes.txt.gz",
-    "sha256": "",
-    "bytes": 0
+    "sha256": "483e80aaed6966108b61a8c4d5319f3763581eff33e395f1f156181c8b32e37b",
+    "bytes": 911396
   },
   "GSE111727_sc_lat_model_raw_counts_spikes.txt.gz": {
     "url": "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE111nnn/GSE111727/suppl/GSE111727_sc_lat_model_raw_counts_spikes.txt.gz",
-    "sha256": "",
-    "bytes": 0
+    "sha256": "c830a1a287110ab1ccacea337ca12a660bb3fdf6bb22ebb7a331b0f0e9836be5",
+    "bytes": 7653
   }
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import annotations
-import argparse, json
+import argparse, json, sys
 from pathlib import Path
 import pandas as pd
 from hivlat.config import Config
@@ -16,27 +16,32 @@ def main(cfg_path: str):
     X = pd.read_parquet(interim / 'GSE111727_latency_model.parquet')
     y = pd.read_csv(interim / 'GSE111727_latency_model_labels.csv', index_col=0)['label']
 
-    # Keep only labeled latency model cells
+    # keep only cells we actually have in X
+    y = y.loc[X.columns]
+
+    # filter to three training classes
     keep = y.isin(['latent','inducible','productive'])
     X = X.loc[:, keep.index[keep]]
     y = y[keep]
 
-    # Stratified split: 80% train / 20% val
+    if X.shape[1] == 0:
+        log.error("No cells available after QC/labeling. "
+                  "Try loosening QC in configs/default.yaml (e.g., min_genes_per_cell: 50, min_cells_per_gene: 1).")
+        sys.exit(2)
+
     from sklearn.model_selection import train_test_split
     train_idx, val_idx = train_test_split(y.index, test_size=0.2, random_state=42, stratify=y.values)
 
-    # Save splits as lists of cell IDs
-    splits = {'train': list(train_idx), 'val': list(val_idx)}
-    (processed / 'splits').mkdir(exist_ok=True, parents=True)
+    # save splits
+    (processed / 'splits').mkdir(parents=True, exist_ok=True)
     with open(processed / 'splits' / 'latency_gse111727.json', 'w') as f:
-        json.dump(splits, f, indent=2)
+        json.dump({'train': list(train_idx), 'val': list(val_idx)}, f, indent=2)
 
-    # Save convenience tables
     X.loc[:, train_idx].to_parquet(processed / 'X_train.parquet')
     X.loc[:, val_idx].to_parquet(processed / 'X_val.parquet')
     y.loc[train_idx].to_frame('label').to_csv(processed / 'y_train.csv')
     y.loc[val_idx].to_frame('label').to_csv(processed / 'y_val.csv')
-    log.info(f"Train/val split saved. Train cells={len(train_idx)}, Val cells={len(val_idx)}")
+    log.info(f"Train/val split saved. Train={len(train_idx)}, Val={len(val_idx)}")
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
