@@ -1,0 +1,28 @@
+paths:
+  raw: data/raw
+  interim: data/interim
+  processed: data/processed
+  logs: runs
+
+datasets:
+  train_source: GSE111727
+  externals: [GSE199727, GSE180133]
+
+prep:
+  min_genes_per_cell: 200
+  min_cells_per_gene: 3
+  normalize: size_factor
+  log1p: true
+
+model:
+  type: logistic    # 'logistic' or 'gbm'
+  random_state: 42
+  max_iter: 800
+
+calibration:
+  method: isotonic  # 'isotonic' or 'platt'
+  cv_folds: 5
+
+evaluation:
+  metrics: [auroc, auprc, ece]
+  conformal_alpha: 0.1

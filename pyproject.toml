@@ -1,0 +1,27 @@
+[project]
+name = "hiv-latency-benchmark"
+version = "0.1.0"
+description = "Cross-study, uncertainty-calibrated classifier for latent/inducible/productive HIV cell states"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Dr. Mohammad Amir Khusru Akhtar", email = "add-your-email@umu.edu"}]
+license = {text = "MIT"}
+dependencies = [
+  "pandas>=2.2",
+  "numpy>=1.26",
+  "scikit-learn>=1.5",
+  "scipy>=1.13",
+  "pyyaml>=6.0",
+  "tqdm>=4.66",
+  "matplotlib>=3.8",
+  "requests>=2.32",
+  "joblib>=1.4",
+  "anndata>=0.10",
+  "scanpy>=1.10"
+]
+
+[project.urls]
+Homepage = "https://github.com/shunyaranbooks/hiv-latency-benchmark"
+
+[tool.setuptools.packages.find]
+where = ["src"]
