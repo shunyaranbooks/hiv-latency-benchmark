@@ -403,7 +403,7 @@ GitHub: https://github.com/shunyaranbooks/hiv-latency-benchmark
 ## Maintainer
 
 **Dr. Mohammad Amir Khusru Akhtar**  
-Dean (Research), Usha Martin University  
+Dean Research, Usha Martin University  
 Email: amir@umu.ac.in· https://doi.org/10.5281/zenodo.17413071
 
 ---
