@@ -1,0 +1,2 @@
+Split,AUROC,AUPRC,ECE_maxprob,Brier,NLL
+Donor (binary; prior-corrected if applicable),0.6561859193438141,0.8615640817270226,0.09622964796304352,,

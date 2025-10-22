@@ -1,0 +1,5 @@
+Accession,Role in Benchmark,Organism,Experiment,Public Since
+GSE111727,Train/Validation (latency model),Homo sapiens,scRNA-seq,2018-03-13
+GSE111727 (donors),External test (donor cells),Homo sapiens,scRNA-seq,2018-03-13
+GSE180133,External stress-test (latency reversal),Homo sapiens,scRNA-seq,2021-07-15
+GSE199727,External stress-test (ex vivo reservoir),Homo sapiens,multi-omic (varies),2022-10-21

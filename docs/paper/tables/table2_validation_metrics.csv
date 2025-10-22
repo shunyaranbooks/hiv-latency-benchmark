@@ -1,0 +1,2 @@
+Split,AUROC_macro,AUPRC_macro,ECE_maxprob
+Validation (multiclass OvR),0.7493510737628384,0.5708675039708421,0.07121967563596021
