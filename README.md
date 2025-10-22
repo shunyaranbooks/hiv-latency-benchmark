@@ -4,14 +4,6 @@ A reproducible, **laptop-friendly** benchmark and baseline model that distinguis
 
 > **Why this matters.** The latent reservoir is the key barrier to an HIV cure. A **generalizable, calibrated** classifier and a clean evaluation protocol help method developers and translational teams compare ideas fairly and prioritize strategies.
 
----
-
-## What’s new in this README
-- Clear **install** steps that prevent `ModuleNotFoundError: hivlat`.
-- A one-command **paper-artifacts builder** (figures + tables) with **safe line continuations** (no comments after `\`).
-- A robust **ROC/PR plotter** and **bootstrap-to-CSV** converter for journals that require CIs.
-- A **normalizer** recipe for evaluation CSVs with unexpected column names.
-- Expanded **Troubleshooting** for common, real errors (flags, spaces in filenames, pyarrow, etc.).
 
 ---
 
