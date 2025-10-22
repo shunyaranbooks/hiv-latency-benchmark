@@ -404,7 +404,7 @@ Loosen QC in `configs/default.yaml` (e.g., `min_genes_per_cell: 50`, `min_cells_
 ## Citation
 
 Akhtar, M. A. K. (2025). *HIV Latency Benchmark: Cross-Study, Uncertainty-Aware Classifier*. Usha Martin University.  
-GitHub: https://github.com/shunyaranbooks
+GitHub: https://github.com/shunyaranbooks/hiv-latency-benchmark
 
 ---
 
@@ -412,7 +412,7 @@ GitHub: https://github.com/shunyaranbooks
 
 **Dr. Mohammad Amir Khusru Akhtar**  
 Dean (Research), Usha Martin University  
-Email: amir@umu.ac.in· GitHub: https://github.com/shunyaranbooks
+Email: amir@umu.ac.in· https://doi.org/10.5281/zenodo.17413071
 
 ---
 
