@@ -17,20 +17,17 @@ def select_hvgs(df: pd.DataFrame, n: int) -> list[str]:
 
 def make_weights(y: pd.Series) -> np.ndarray:
     vc = y.value_counts()
-    w = {c: (1.0/len(vc)) / (vc[c]/len(y)) for c in vc.index}  # inverse-freq normalized
+    w = {c: (1.0/len(vc)) / (vc[c]/len(y)) for c in vc.index}
     return y.map(w).values
 
 def maybe_intersection(train: pd.DataFrame, cfg) -> list[str] | None:
-    """Return a train∩donor gene list if enabled and donor interim exists; else None."""
     if not cfg.get('prep', 'hvg_intersection_with_donor', default=False):
         return None
-    interim = Path(cfg.get('paths', 'interim'))
-    f_don = interim / 'GSE111727_donors.parquet'
-    if not f_don.exists():
+    inter_file = Path(cfg.get('paths','interim')) / 'GSE111727_donors.parquet'
+    if not inter_file.exists():
         return None
-    don = pd.read_parquet(f_don)  # genes x cells
-    inter = train.index.intersection(don.index)
-    return inter.tolist()
+    don = pd.read_parquet(inter_file)
+    return train.index.intersection(don.index).tolist()
 
 def main(cfg_path: str, model_out: str, model_type: str = 'logistic'):
     cfg = Config(cfg_path); log = get_logger()
@@ -41,13 +38,11 @@ def main(cfg_path: str, model_out: str, model_type: str = 'logistic'):
     X_val   = pd.read_parquet(processed/'X_val.parquet')
     y_val   = pd.read_csv(processed/'y_val.csv', index_col=0)['label']
 
-    # Gene set for HVG selection
     inter = maybe_intersection(X_train, cfg)
     base = X_train if inter is None else X_train.loc[inter]
 
     hvg_n = cfg.get('prep','hvg_n', default=2000)
     hvgs = select_hvgs(base, min(hvg_n, base.shape[0]))
-    # apply HVGs
     X_train = X_train.loc[hvgs]
     X_val   = _align_to_genes(X_val, hvgs)
 
@@ -58,19 +53,28 @@ def main(cfg_path: str, model_out: str, model_type: str = 'logistic'):
     if model_type == 'gbm':
         est = GradientBoostingClassifier(random_state=cfg.get('model','random_state', default=42))
         est.fit(Xs_train, pd.Categorical(y_train).codes, sample_weight=make_weights(y_train))
+        est_uncal = est
     else:
         C = float(os.getenv('HIVLAT_C', '1.0'))
-        est = LogisticRegression(max_iter=1000, random_state=cfg.get('model','random_state', default=42),
-                                 class_weight='balanced', C=C, multi_class='auto')
-        est.fit(Xs_train, pd.Categorical(y_train).codes)
+        est_uncal = LogisticRegression(max_iter=1000, random_state=cfg.get('model','random_state', default=42),
+                                       class_weight='balanced', C=C, multi_class='auto')
+        est_uncal.fit(Xs_train, pd.Categorical(y_train).codes)
 
-    cal = CalibratedClassifierCV(est, method='isotonic', cv='prefit')
+    cal = CalibratedClassifierCV(est_uncal, method='isotonic', cv='prefit')
     cal.fit(Xs_val, pd.Categorical(y_val).codes)
 
-    bundle = {'model': cal, 'scaler': scaler, 'classes': sorted(y_train.unique().tolist()), 'genes': hvgs}
+    classes = sorted(y_train.unique().tolist())
+    bundle_uncal = {'model': est_uncal, 'scaler': scaler, 'classes': classes, 'genes': hvgs}
+    bundle_cal   = {'model': cal,       'scaler': scaler, 'classes': classes, 'genes': hvgs}
+
     out = Path(model_out); out.parent.mkdir(parents=True, exist_ok=True)
-    save_model(bundle, out)
-    log.info(f"Saved calibrated {model_type} → {out} | HVGs={len(hvgs)} | intersection={inter is not None}")
+    # Save calibrated to requested path
+    save_model(bundle_cal, out)
+    # Also save uncalibrated alongside (same stem + _uncal)
+    save_model(bundle_uncal, out.with_name(out.stem.replace('.joblib','') + '_uncal.joblib') if out.suffix=='.joblib' else out.with_name(out.stem + '_uncal.joblib'))
+    log = get_logger()
+    log.info(f"Saved calibrated → {out.name} and uncalibrated → {out.stem}_uncal.joblib | HVGs={len(hvgs)} | intersection={inter is not None}")
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('--config', default='configs/default.yaml')
