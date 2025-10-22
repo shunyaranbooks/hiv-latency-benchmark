@@ -46,8 +46,8 @@ def predict_proba(bundle, df: pd.DataFrame):
     genes = bundle.get('genes', None)
     if genes is not None:
         df = _align_to_genes(df, genes)
-    X = df.T.values
-    Xs = bundle['scaler'].transform(X)
+    X_df = df.T  # keep DataFrame so feature names are preserved
+    Xs = bundle['scaler'].transform(X_df)
     proba = bundle['model'].predict_proba(Xs)
     return proba  # shape: cells x classes
 

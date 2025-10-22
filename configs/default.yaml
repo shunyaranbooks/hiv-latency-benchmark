@@ -22,7 +22,8 @@ paths:
   processed: data/processed
   raw: data/raw
 prep:
-  hvg_n: 2000
+  hvg_intersection_with_donor: true
+  hvg_n: 3000
   log1p: true
   min_cells_per_gene: 3
   min_genes_per_cell: 100
