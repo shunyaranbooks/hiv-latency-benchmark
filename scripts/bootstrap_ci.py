@@ -26,14 +26,13 @@ def bootstrap_binary(y, p, n=2000, seed=42):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--eval_dir", default="data/processed/eval")
+    ap.add_argument("--csv", default="data/processed/eval/predictions_donor.csv")
     ap.add_argument("--out", default="docs/paper/tables/bootstrap_donor_binary.json")
     args = ap.parse_args()
-
-    # donor
-    df = pd.read_csv(Path(args.eval_dir)/"predictions_donor.csv", index_col=0)
+    df = pd.read_csv(Path(args.csv), index_col=0)
     p = df["p_productive"].values
     y = df["true_label"].values.astype(int)
     out = bootstrap_binary(y, p)
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(out, indent=2))
     print(json.dumps(out, indent=2))
