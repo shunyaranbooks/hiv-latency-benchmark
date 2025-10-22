@@ -1,8 +1,17 @@
 # HIV Latency Benchmark: Cross-Study, Uncertainty-Aware Classifier
 
-A reproducible, **laptop-friendly** benchmark and baseline model that distinguishes **latent ↔ inducible-latent ↔ productive** HIV-infected CD4 T cells from single-cell RNA-seq, reporting **uncertainty (calibration)** alongside accuracy. This is the first artifact in a planned open series.
+A reproducible, **laptop-friendly** benchmark and baseline model that distinguishes **latent ↔ inducible-latent ↔ productive** HIV-infected CD4 T cells from single-cell RNA-seq, reporting **uncertainty (calibration)** alongside accuracy.
 
 > **Why this matters.** The latent reservoir is the key barrier to an HIV cure. A **generalizable, calibrated** classifier and a clean evaluation protocol help method developers and translational teams compare ideas fairly and prioritize strategies.
+
+---
+
+## What’s new in this README
+- Clear **install** steps that prevent `ModuleNotFoundError: hivlat`.
+- A one-command **paper-artifacts builder** (figures + tables) with **safe line continuations** (no comments after `\`).
+- A robust **ROC/PR plotter** and **bootstrap-to-CSV** converter for journals that require CIs.
+- A **normalizer** recipe for evaluation CSVs with unexpected column names.
+- Expanded **Troubleshooting** for common, real errors (flags, spaces in filenames, pyarrow, etc.).
 
 ---
 
@@ -14,8 +23,11 @@ A reproducible, **laptop-friendly** benchmark and baseline model that distinguis
 - [Configuration](#configuration)
 - [Modeling defaults](#modeling-defaults)
 - [What the evaluation reports](#what-the-evaluation-reports)
+- [Build paper artifacts (figures + tables)](#build-paper-artifacts-figures--tables)
+- [Optional: ROC/PR charts](#optional-rocpr-charts)
+- [Optional: Donor bootstrap → CSV](#optional-donor-bootstrap--csv)
 - [Repo layout](#repo-layout)
-- [Results (example placeholder)](#results-example-placeholder)
+- [Current run snapshot](#current-run-snapshot)
 - [Troubleshooting](#troubleshooting)
 - [Scope, safety, and ethics](#scope-safety-and-ethics)
 - [Citation](#citation)
@@ -55,13 +67,18 @@ Use `scripts/download_geo.py` to populate `data/raw/...`. File sizes and SHA-256
 
 ## Install & quick start
 
+> **Tip:** Install from the **project root** to register the `hivlat` package; this prevents `ModuleNotFoundError` in scripts.
+
 ```bash
 # 0) Create environment
 python -m venv .venv
 source .venv/bin/activate
 
-# 1) Install package + CLI deps
+# 1) Install package + CLI deps (installs src/hivlat)
 pip install -e .
+
+# (if Parquet error) ensure pyarrow
+pip install pyarrow
 
 # 2) Download public files (starts with GSE111727)
 python scripts/download_geo.py
@@ -72,8 +89,6 @@ python scripts/auto_label_gse111727.py
 # 4) Prepare, split, train, evaluate
 python scripts/prepare_data.py --config configs/default.yaml
 python scripts/split_dataset.py   --config configs/default.yaml
-
-# Tip: enable HVG intersection to reduce domain shift (see “Configuration”)
 python scripts/train.py           --config configs/default.yaml --model-out data/processed/models/logreg.joblib
 python scripts/evaluate.py        --config configs/default.yaml --model data/processed/models/logreg.joblib
 ```
@@ -87,7 +102,7 @@ Outputs land under `data/processed/`:
 
 ## Label provenance (transparent & reproducible)
 
-This repo **does not guess** labels from vague prefixes; it encodes published provenance rules in code (`scripts/auto_label_gse111727.py`) and writes them into two templates:
+This repo **does not guess** labels; it encodes published provenance rules in code (`scripts/auto_label_gse111727.py`) and writes them into two templates:
 
 - `data/raw/GSE111727/GSE111727_latency_model_labels_template.csv`
 - `data/raw/GSE111727/GSE111727_donors_labels_template.csv`
@@ -126,14 +141,14 @@ prep:
   normalize: size_factor
   log1p: true
   hvg_n: 2000        # try 1000/2000/3000
-  # Recommended: reduce domain shift by using only genes present in train ∩ donor
+  # Reduce domain shift by using only genes present in train ∩ donor
   hvg_intersection_with_donor: true
 
 model:
   random_state: 42
 ```
 
-You can tune logistic regularization via an env var (kept out of the YAML to make sweeps easy):
+Tune logistic regularization via an env var (kept out of YAML for easy sweeps):
 ```bash
 export HIVLAT_C=0.5  # try 0.25, 0.5, 1.0, 2.0
 ```
@@ -152,28 +167,139 @@ python scripts/train.py --config configs/default.yaml --model-type gbm --model-o
   *Recommended:* `prep.hvg_intersection_with_donor: true` to reduce cross-study drift.
 - **Classifier**: Logistic Regression (`class_weight='balanced'`, `C` from `HIVLAT_C`) **or** Gradient Boosting (GBM).
 - **Calibration**: **Isotonic** on the validation split (reduces ECE / over-confidence).
-- **Donor prior shift**: during evaluation we apply **Saerens prior correction** using the source (val) and target (donor) class priors to improve calibration under domain shift.
+- **Donor prior shift**: at evaluation apply **Saerens prior correction** using source (val) and target (donor) class priors.
 
 ---
 
 ## What the evaluation reports
 
-`python scripts/evaluate.py ...` prints and writes:
+Running `python scripts/evaluate.py ...` prints and writes:
 
 - **Validation (multiclass)**:  
   - `auroc_macro_ovr`  
   - `auprc_macro_ovr`  
-  - `ece_maxprob` (Expected Calibration Error, lower is better)
+  - `ece_maxprob` (Expected Calibration Error)
 
 - **Donor / external (binary: latent vs productive)**:  
   - `auroc_binary`, `auprc_binary`  
-  - `ece_maxprob` (on a 2-class probability matrix after prior correction)
+  - `ece_maxprob` (after prior correction)
 
 Per-cell probabilities:  
 - `data/processed/eval/predictions_val.csv`  
 - `data/processed/eval/predictions_donor.csv`
 
-> **Planned add-ons:** reliability diagrams and split-conformal coverage plots (`scripts/plot_reliability.py`, `scripts/plot_conformal.py`). PRs welcome.
+---
+
+## Build paper artifacts (figures + tables)
+
+**Recommended schema for CSVs**  
+- `predictions_val.csv` must have: `y_true`, `latent`, `inducible`, `productive` (probs in [0,1]).  
+- `predictions_donor.csv` must have: `y_true` (0/1 or latent/productive) and `p_productive`.  
+
+> If your files use different column names, see **[Troubleshooting → Normalizing eval CSVs]** below.
+
+**Generate artifacts (safe line breaks — no comments after `\`):**
+```bash
+python scripts/build_paper_artifacts.py   --val data/processed/eval/predictions_val.csv   --donor data/processed/eval/predictions_donor.csv   --report data/processed/eval/report.json   --bootstrap 2000   --n-bins 15
+```
+
+**If you also have uncalibrated files:**
+```bash
+python scripts/build_paper_artifacts.py   --val data/processed/eval/predictions_val.csv   --val-uncal data/processed/eval/predictions_val_uncal.csv   --donor data/processed/eval/predictions_donor.csv   --donor-uncal data/processed/eval/predictions_donor_uncal.csv   --report data/processed/eval/report.json   --bootstrap 2000   --n-bins 15
+```
+
+Artifacts are written to:
+- **Figures:** `docs/paper/figures/fig_reliability_val_cal.png`, `fig_reliability_val_uncal.png`, `fig_reliability_donor_cal.png`, `fig_reliability_donor_uncal.png`, plus `reliability_ece.json`.
+- **Tables:** `docs/paper/tables/table1_dataset_summary.csv`, `table2_validation_metrics.csv`, `table3_donor_metrics.csv`, `appendix_prediction_counts.csv`, and (optional) `bootstrap_donor_binary.json`.
+
+---
+
+## Optional: ROC/PR charts
+
+If your journal wants ROC/PR figures too, use the helper in `notebooks/02_train_baseline.ipynb` **or** run the standalone plotter (example below assumes standard column names):
+
+```bash
+python - <<'PY'
+import pandas as pd, numpy as np
+from pathlib import Path
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc, precision_recall_curve, average_precision_score
+
+figdir = Path("docs/paper/figures"); figdir.mkdir(parents=True, exist_ok=True)
+def roc_pr_binary(y, p, prefix, title):
+    fpr,tpr,_ = roc_curve(y,p); roc_auc = auc(fpr,tpr)
+    prec,rec,_ = precision_recall_curve(y,p); ap = average_precision_score(y,p)
+    plt.figure(); plt.plot(fpr,tpr,label=f"AUC={roc_auc:.3f}"); plt.plot([0,1],[0,1],'--')
+    plt.xlabel("False Positive Rate"); plt.ylabel("True Positive Rate"); plt.title(f"ROC — {title}"); plt.legend(); plt.tight_layout()
+    plt.savefig(figdir/f"{prefix}_roc.png", dpi=300); plt.close()
+    plt.figure(); plt.plot(rec,prec,label=f"AP={ap:.3f}")
+    plt.xlabel("Recall"); plt.ylabel("Precision"); plt.title(f"PR — {title}"); plt.legend(); plt.tight_layout()
+    plt.savefig(figdir/f"{prefix}_pr.png", dpi=300); plt.close()
+    print(f"[ok] {title}: ROC/PR saved → {prefix}_*.png")
+
+# Donor (binary)
+don = pd.read_csv("data/processed/eval/predictions_donor.csv")
+y = don.get("y_true")
+if y is not None:
+    y = (y.astype(str).str.lower().isin(["1","productive","true"])).astype(int).values
+pcol = next((c for c in ["p_productive","prob_productive","productive","productive_proba","p1","proba_productive"] if c in don.columns), None)
+if pcol:
+    p = don[pcol].astype(float).clip(1e-9,1-1e-9).values
+    roc_pr_binary(y, p, "fig_donor", "Donor")
+
+# Validation (OvR)
+val = pd.read_csv("data/processed/eval/predictions_val.csv")
+ycol = next((c for c in ["y_true","label","y","target"] if c in val.columns), None)
+if ycol and all(c in val.columns for c in ["latent","inducible","productive"]):
+    y_str = val[ycol].astype(str).str.lower()
+    for cls in ["latent","inducible","productive"]:
+        y_bin = (y_str == cls).astype(int).values
+        p = val[cls].astype(float).clip(0,1).values
+        roc_pr_binary(y_bin, p, f"fig_val_{cls}", f"Validation — {cls} (OvR)")
+PY
+```
+
+---
+
+## Optional: Donor bootstrap → CSV
+
+Some journals require CIs in tables. Convert bootstraps like this:
+
+```bash
+python - <<'PY'
+import json, csv
+from pathlib import Path
+src = Path("docs/paper/tables/bootstrap_donor_binary.json")
+dst = Path("docs/paper/tables/table3_donor_bootstrap.csv")
+if not src.exists():
+    raise SystemExit(f"[error] not found: {src}")
+data = json.loads(src.read_text())
+rows = []
+def add(metric, mean=None, ci=None):
+    lo, hi = (ci or [None, None])
+    rows.append([metric, mean, lo, hi])
+
+if isinstance(data, list):
+    for item in data:
+        if isinstance(item, dict):
+            add(item.get("metric"), item.get("mean"), item.get("ci95"))
+        elif isinstance(item, (list, tuple)):
+            add(item[0], item[1] if len(item)>1 else None,
+                [item[2] if len(item)>2 else None, item[3] if len(item)>3 else None])
+elif isinstance(data, dict):
+    for k,v in data.items():
+        if isinstance(v, dict):
+            add(k, v.get("mean"), v.get("ci95"))
+        else:
+            add(k, v, None)
+else:
+    add("unknown", None, None)
+
+with dst.open("w", newline="") as f:
+    w = csv.writer(f); w.writerow(["Metric","Mean","CI95_lower","CI95_upper"]); w.writerows(rows)
+print(f"[ok] wrote {dst}")
+PY
+```
 
 ---
 
@@ -226,43 +352,59 @@ hiv-latency-benchmark/
 
 ---
 
-## Results (example placeholder)
+## Current run snapshot
 
-*(Replace with your own numbers; these are indicative from early runs with GSE111727 only.)*
+*(Replace with your own when you re-run; these match a recent calibrated baseline on GSE111727 with donors held out.)*
 
-- **Validation (multiclass)** — Logistic + isotonic, HVG=2000:  
-  AUROC ≈ **0.74**, AUPRC ≈ **0.58**, **ECE ≈ 0.06**
+- **Validation (multiclass, OvR)** — Logistic + isotonic, HVG=2000:  
+  **AUROC_macro = 0.7631**, **AUPRC_macro = 0.5802**, **ECE = 0.0824**
 
 - **Donor (binary)** — with HVG intersection + prior correction:  
-  AUROC ≈ **0.68**, AUPRC ≈ **0.88**, **ECE** decreases vs. uncorrected
-
-- **GBM comparator** — often best in-study AUROC but weaker cross-study AUROC; we include it as a robustness comparator.
-
-Next planned: add **GSE180133 / GSE199727** as external tests and publish uncertainty plots.
+  **AUROC = 0.6535**, **AUPRC = 0.8597**, **ECE = 0.0691**
 
 ---
 
 ## Troubleshooting
 
-- **Parquet engine error** (`pyarrow`/`fastparquet` missing):  
-  `pip install pyarrow` (the project’s `pyproject.toml` should already include it).
-- **“X does not have valid feature names” warning**: harmless; the code keeps DataFrame feature names during scaling to silence it.
-- **Empty splits**: loosen QC in `configs/default.yaml` (e.g., `min_genes_per_cell: 50`, `min_cells_per_gene: 1`) just to verify the pipeline, then restore stricter QC for real runs.
+**1) `ModuleNotFoundError: No module named 'hivlat'`**  
+Run `pip install -e .` **from the project root** (where `pyproject.toml` lives). Avoid running scripts from outside the repo without installing.
+
+**2) “unrecognized arguments” after a long command**  
+In bash, a line-continuation `\` must be the **last character** on the line. **Do not** add spaces or comments after it.
+
+**3) Filenames with spaces (e.g., “(1)”)**  
+Quote them:
+```bash
+python scripts/build_paper_artifacts.py   --val "data/processed/eval/predictions_val (1).csv"   --donor "data/processed/eval/predictions_donor (1).csv"   --report "data/processed/eval/report (2).json"
+```
+
+**4) Normalizing eval CSVs (schema mismatch)**  
+Expected schema:
+- Validation: `y_true`, `latent`, `inducible`, `productive`
+- Donor: `y_true`, `p_productive`
+
+If your columns differ, minimally rename columns or adapt with a small Python snippet before running the builder.
+
+**5) Parquet engine error** (`pyarrow`/`fastparquet` missing)  
+`pip install pyarrow` (this project prefers pyarrow).
+
+**6) Empty splits**  
+Loosen QC in `configs/default.yaml` (e.g., `min_genes_per_cell: 50`, `min_cells_per_gene: 1`) just to verify the pipeline; restore stricter QC for real runs.
 
 ---
 
 ## Scope, safety, and ethics
 
 - This is **computational research**. No wet-lab protocols, no clinical advice, and no identifiable data.
-- Use only public, de-identified datasets or synthetic data.  
-- Please include a **Model Card** and **Data Card** with any release or manuscript.
+- Use only **public, de-identified datasets** or synthetic data.  
+- Include a **Model Card** and **Data Card** with any release or manuscript.
 
 ---
 
 ## Citation
 
-> Akhtar, M. A. K. (2025). *HIV Latency Benchmark: Cross-Study, Uncertainty-Aware Classifier*. Usha Martin University.  
-> GitHub: https://github.com/shunyaranbooks
+Akhtar, M. A. K. (2025). *HIV Latency Benchmark: Cross-Study, Uncertainty-Aware Classifier*. Usha Martin University.  
+GitHub: https://github.com/shunyaranbooks
 
 ---
 
@@ -276,4 +418,5 @@ Email: *(add your email)* · GitHub: https://github.com/shunyaranbooks
 
 ## License
 
-This project is released under the **MIT License** (see `LICENSE`).
+Released under the **MIT License** (see `LICENSE`).
+
