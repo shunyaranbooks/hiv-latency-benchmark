@@ -412,7 +412,7 @@ GitHub: https://github.com/shunyaranbooks
 
 **Dr. Mohammad Amir Khusru Akhtar**  
 Dean (Research), Usha Martin University  
-Email: *(add your email)* · GitHub: https://github.com/shunyaranbooks
+Email: amir@umu.ac.in· GitHub: https://github.com/shunyaranbooks
 
 ---
 
