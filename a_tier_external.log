@@ -1,0 +1,51 @@
+
+[1;34m[INFO][0m Checking Python and key libs…
+[MISSING] [('pyarrow', "No module named 'pyarrow'")]
+
+[1;34m[INFO][0m Installing missing libs (local venv assumed)…
+
+[notice] A new release of pip is available: 25.1.1 -> 25.2
+[notice] To update, run: python3 -m pip install --upgrade pip
+
+[1;32m[DONE][0m Calibrated model ready: data/processed/models/logreg_inter.joblib
+
+[1;34m[INFO][0m Fetching GSE180133 from GEO (exprMatrix + sampleSheet if available)…
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0 4581k    0 32170    0     0  27428      0  0:02:51  0:00:01  0:02:50 27425 40 4581k   40 1855k    0     0   797k      0  0:00:05  0:00:02  0:00:03  797k100 4581k  100 4581k    0     0  1772k      0  0:00:02  0:00:02 --:--:-- 1772k
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  1884  100  1884    0     0   2617      0 --:--:-- --:--:-- --:--:--  2616
+
+[1;34m[INFO][0m Preparing external cohort (harmonize + QC + normalization)…
+/home/codespace/.local/lib/python3.12/site-packages/numpy/_core/fromnumeric.py:3860: RuntimeWarning: Mean of empty slice.
+  return _methods._mean(a, axis=axis, dtype=dtype,
+/home/codespace/.local/lib/python3.12/site-packages/numpy/_core/_methods.py:144: RuntimeWarning: invalid value encountered in scalar divide
+  ret = ret.dtype.type(ret / rcount)
+[prepare_external] Wrote label template → data/raw/GSE180133/GSE180133_labels_template.csv
+[prepare_external] Saved harmonized matrix GSE180133.parquet and labels to interim.
+Traceback (most recent call last):
+  File "<stdin>", line 3, in <module>
+  File "/home/codespace/.local/lib/python3.12/site-packages/pandas/core/generic.py", line 6318, in __getattr__
+    return object.__getattribute__(self, name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/codespace/.local/lib/python3.12/site-packages/pandas/core/accessor.py", line 224, in __get__
+    accessor_obj = self._accessor(obj)
+                   ^^^^^^^^^^^^^^^^^^^
+  File "/home/codespace/.local/lib/python3.12/site-packages/pandas/core/strings/accessor.py", line 194, in __init__
+    self._inferred_dtype = self._validate(data)
+                           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/codespace/.local/lib/python3.12/site-packages/pandas/core/strings/accessor.py", line 248, in _validate
+    raise AttributeError("Can only use .str accessor with string values!")
+AttributeError: Can only use .str accessor with string values!. Did you mean: 'std'?
+
+[1;33m[WARN][0m External evaluation skipped (class balance or model missing).
+
+[1;34m[INFO][0m Paper assets (internal + external) located at:
+  - docs/paper/figures/
+  - docs/paper/tables/
+  - docs/paper/external/figures/
+  - docs/paper/external/tables/
+
+[1;32m[DONE][0m Finished. This script intentionally returns exit code 0 to avoid terminal errors.
+exit
